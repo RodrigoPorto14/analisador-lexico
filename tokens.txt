@@ -1,0 +1,11 @@
+integer = (0-9)^+
+
+type-identifier = (A-Z)&(a-z+A-Z+_)*
+
+object-identifier = (a-z)&(a-z+A-Z+_)*
+
+keyword = [class, else, false, fi, if, in, inherits, isvoid, let, loop, pool, then, while,
+case, esac, new, of, not, true]
+
+special notation:  + - * / ~ < <= <- = => ( ) { } @ . , : ;
+
