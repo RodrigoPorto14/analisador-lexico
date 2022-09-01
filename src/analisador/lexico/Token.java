@@ -2,9 +2,9 @@ package analisador.lexico;
 
 public class Token {
     
-    private String description;
-    private TokenType type;
-    private int row;
+    private final String description;
+    private final TokenType type;
+    private final int row;
     
     public Token(String description, TokenType type, int row)
     {
