@@ -6,9 +6,9 @@ public class Main {
     public static void main(String[] args)
     {
         Token token;
-        AnalisadorLexico analisador = new AnalisadorLexico("teste.txt");
+        AnalisadorLexico lexico = new AnalisadorLexico("teste.txt");
         
-        while((token = analisador.nextToken())!=null)
+        while((token = lexico.nextToken())!=null)
         {
             System.out.println(token.getDescription());
             System.out.println(token.getType());

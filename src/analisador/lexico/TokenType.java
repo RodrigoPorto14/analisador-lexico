@@ -7,4 +7,5 @@ public enum TokenType {
     SPECIAL_NOTATION,
     STRING,
     KEYWORD,
+    WHITE_SPACE
 }

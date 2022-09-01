@@ -4,8 +4,38 @@ type-identifier = (A-Z)&(a-z+A-Z+_)*
 
 object-identifier = (a-z)&(a-z+A-Z+_)*
 
+string: "&(*)^+&"
+
 keyword = [class, else, false, fi, if, in, inherits, isvoid, let, loop, pool, then, while,
 case, esac, new, of, not, true]
 
-special notation:  + - * / ~ < <= <- = => ( ) { } @ . , : ;
+arithmetic operator: + - * /
+
+complement operator: ~
+
+logical operator: < <= = 
+
+object assignment: <-
+
+type assignment: :
+
+case operator: =>
+
+open parentheses: (
+
+close parentheses: )
+
+open braces: {
+
+close braces: }
+
+super: @
+
+method call: .
+
+separator: ,
+
+block separator: ;
+
+
 
