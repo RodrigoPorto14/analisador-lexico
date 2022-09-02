@@ -15,7 +15,7 @@ public class LexicalAnaliser {
    private BufferedReader codeFile;
    private int row;
    private char lastChar;
-   private boolean tokenRead;
+   private boolean savedChar;
    private final ArrayList<String> keywords;
    private final HashMap<String,TokenType> symbols;
    
@@ -25,7 +25,7 @@ public class LexicalAnaliser {
        catch(IOException e){e.getStackTrace();}
        
        this.row=1;
-       this.tokenRead=false;
+       this.savedChar=false;
        this.keywords = new ArrayList<>();
        this.symbols = new HashMap<>();
        addKeywordsAndSymbols();
@@ -41,7 +41,7 @@ public class LexicalAnaliser {
        {
             while(currentChar!=Character.MAX_VALUE)
             {
-                if(tokenRead) {currentChar = lastChar; tokenRead=false;}
+                if(savedChar) {currentChar = lastChar; savedChar=false;}
                 else currentChar = (char) codeFile.read();
                 
                 if(currentChar == '\n') row++;
@@ -53,7 +53,7 @@ public class LexicalAnaliser {
                         if(contains("[0-9]",currentChar)) state=1;
                         if(contains("[a-z]",currentChar)) state=2;
                         if(contains("[A-Z]",currentChar)) state=3;
-                        if(contains("[+*/~:{}@.,;)]",currentChar)) return new Token(""+currentChar,getSymbolType(""+currentChar),row);
+                        if(contains("[+*/~:{}@.,;)]",currentChar)) return new Token(toStr(currentChar),getSymbolType(toStr(currentChar)),row);
                         if(currentChar=='-') state=4;
                         if(currentChar=='<') {regex="[=-]";state=6;}
                         if(currentChar=='=') {regex="[>]";state=6;}
@@ -65,11 +65,7 @@ public class LexicalAnaliser {
                     case 1 -> 
                     {
                         if(contains("[0-9]",currentChar)) tokenDescription+=currentChar;
-                        else 
-                        {
-                            saveChar(currentChar);
-                            return new Token(tokenDescription,TokenType.INTEGER,row);
-                        }    
+                        else return createToken(tokenDescription,TokenType.INTEGER,currentChar);                           
                     }
                     
                     case 2 -> 
@@ -77,12 +73,11 @@ public class LexicalAnaliser {
                         if(contains("[a-zA-Z_]",currentChar)) tokenDescription+=currentChar;
                         else 
                         {
-                            saveChar(currentChar);
                             TokenType tokenType;
                             if(isBoolean(tokenDescription) || keywords.contains(tokenDescription.toLowerCase()))  tokenType = getKeywordType(tokenDescription); 
                             else tokenType = TokenType.OBJECT_IDENTIFIER;
-                                
-                            return new Token(tokenDescription,tokenType,row);
+                            
+                            return createToken(tokenDescription,tokenType,currentChar);
                         }    
                     }
                     
@@ -90,24 +85,19 @@ public class LexicalAnaliser {
                     {
                         if(contains("[a-zA-Z_]",currentChar)) tokenDescription+=currentChar;
                         else 
-                        {
-                            saveChar(currentChar);
+                        {                           
                             TokenType tokenType;
                             if(keywords.contains(tokenDescription.toLowerCase())) tokenType = getKeywordType(tokenDescription); 
                             else tokenType = TokenType.TYPE_IDENTIFIER;
                                 
-                            return new Token(tokenDescription,tokenType,row);
+                            return createToken(tokenDescription,tokenType,currentChar);
                         }    
                     }
                     
                     case 4 -> 
                     {
                         if(currentChar=='-') {tokenDescription="";state=5;}
-                        else 
-                        {
-                            saveChar(currentChar);
-                            return new Token(tokenDescription,getSymbolType(tokenDescription),row);
-                        }    
+                        else return createToken(tokenDescription,getSymbolType(tokenDescription),currentChar);                            
                     }
                    
                     case 5 -> {if(currentChar=='\n') state=0;}
@@ -128,15 +118,12 @@ public class LexicalAnaliser {
                             tokenDescription="";
                             state=8;
                         }
-                        else 
-                        {
-                            saveChar(currentChar);
-                            return new Token(tokenDescription,getSymbolType(tokenDescription),row);
-                        }  
+                        else return createToken(tokenDescription,getSymbolType(tokenDescription),currentChar);                          
                     }
                     
                     case 8 -> {if(currentChar=='*') state=9;}
                     case 9 -> {if(currentChar==')') state=0;}
+                    
                     case 10 ->
                     {
                         tokenDescription+=currentChar;
@@ -152,8 +139,14 @@ public class LexicalAnaliser {
        catch(IOException e){e.getStackTrace();return null;}     
    }
    
-   private void saveChar(char c){lastChar = c; tokenRead = true;}
+   private Token createToken(String description, TokenType type,char c)
+   {
+       saveChar(c);
+       return new Token(description,type,row);
+   }
+   private void saveChar(char c){lastChar = c; savedChar = true;}
    private boolean isBoolean(String str){return str.toLowerCase().equals("true") || str.toLowerCase().equals("false");}
+   private String toStr(char c) {return ""+c;}
    
    private boolean contains(String regex,char c)
    {
@@ -175,6 +168,5 @@ public class LexicalAnaliser {
    }
 
    private TokenType getKeywordType(String str) {return TokenType.valueOf(str.toUpperCase());}
-   private TokenType getSymbolType(String str) {return symbols.get(str);}
-        
+   private TokenType getSymbolType(String str) {return symbols.get(str);}       
 }

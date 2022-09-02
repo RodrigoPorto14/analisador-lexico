@@ -5,7 +5,7 @@
         <group>
             <file>file:/D:/Biblioteca/Documentos/Java/analisador-lexico/src/analisador/lexico/Main.java</file>
             <file>file:/D:/Biblioteca/Documentos/Java/analisador-lexico/src/analisador/lexico/Token.java</file>
-            <file>file:/D:/Biblioteca/Documentos/Java/analisador-lexico/src/analisador/lexico/AnalisadorLexico.java</file>
+            <file>file:/D:/Biblioteca/Documentos/Java/analisador-lexico/src/analisador/lexico/LexicalAnaliser.java</file>
             <file>file:/D:/Biblioteca/Documentos/Java/analisador-lexico/src/analisador/lexico/TokenType.java</file>
         </group>
     </open-files>
