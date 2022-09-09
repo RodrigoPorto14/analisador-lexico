@@ -7,12 +7,17 @@ public class Main {
         Token token;
         LexicalAnaliser lexico = new LexicalAnaliser("teste.txt");
         
-        while((token = lexico.nextToken())!=null)
+        try
         {
-            System.out.println(token.getDescription());
-            System.out.println(token.getType());
-            System.out.println(token.getRow());
-            System.out.println("======================");
-        }    
+           while((token = lexico.nextToken())!=null)
+            {
+                System.out.println(token.getDescription());
+                System.out.println(token.getType());
+                System.out.println(token.getRow());
+                System.out.println("======================");
+            }   
+        }
+        catch(LexicalException e){System.out.println(e.getMessage());}
+        finally {lexico.closeFile();}      
     }        
 }

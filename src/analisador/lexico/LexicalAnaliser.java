@@ -21,17 +21,17 @@ public class LexicalAnaliser {
    
    public LexicalAnaliser(String fileName)
    {
-       try{this.codeFile = new BufferedReader(new FileReader(fileName));}
+       try{codeFile = new BufferedReader(new FileReader(fileName));}
        catch(IOException e){e.getStackTrace();}
        
-       this.row=1;
-       this.savedChar=false;
-       this.keywords = new ArrayList<>();
-       this.symbols = new HashMap<>();
+       row=1;
+       savedChar=false;
+       keywords = new ArrayList<>();
+       symbols = new HashMap<>();
        addKeywordsAndSymbols();
    }
    
-   public Token nextToken()
+   public Token nextToken() throws LexicalException
    {
        String tokenDescription="",regex="";
        char currentChar=' ';
@@ -39,7 +39,7 @@ public class LexicalAnaliser {
        
        try
        {
-            while(currentChar!=Character.MAX_VALUE)
+            while(currentChar!=EOF())
             {
                 if(savedChar) {currentChar = lastChar; savedChar=false;}
                 else currentChar = (char) codeFile.read();
@@ -48,6 +48,7 @@ public class LexicalAnaliser {
                
                 switch(state)
                 {
+                    //PRIMEIRO CARACTER
                     case 0 -> 
                     {
                         if(contains("[0-9]",currentChar)) state=1;
@@ -59,15 +60,23 @@ public class LexicalAnaliser {
                         if(currentChar=='=') {regex="[>]";state=6;}
                         if(currentChar=='(') state=7;
                         if(currentChar=='"') {startStringRow=row;state=10;}
-                        if(state!=0) tokenDescription+=currentChar;
+                        
+                        if(state!=0) tokenDescription+=currentChar;                       
+                        else if(!contains("[\n\r\f\t ]",currentChar) && currentChar!=EOF()) throw new LexicalException("Token nao reconhecido",row);                      
                     }
                     
+                    // INTEIRO
                     case 1 -> 
                     {
                         if(contains("[0-9]",currentChar)) tokenDescription+=currentChar;
-                        else return createToken(tokenDescription,TokenType.INTEGER,currentChar);                           
+                        else 
+                        {
+                            saveChar(currentChar);
+                            return new Token(tokenDescription,TokenType.INTEGER,row);
+                        }                           
                     }
                     
+                    // ID DE OBJETO ou PALAVRA-CHAVE
                     case 2 -> 
                     {
                         if(contains("[a-zA-Z_]",currentChar)) tokenDescription+=currentChar;
@@ -77,10 +86,12 @@ public class LexicalAnaliser {
                             if(isBoolean(tokenDescription) || keywords.contains(tokenDescription.toLowerCase()))  tokenType = getKeywordType(tokenDescription); 
                             else tokenType = TokenType.OBJECT_IDENTIFIER;
                             
-                            return createToken(tokenDescription,tokenType,currentChar);
+                            saveChar(currentChar);
+                            return new Token(tokenDescription,tokenType,row);
                         }    
                     }
                     
+                    // ID DE TIPO ou PALAVRA-CHAVE
                     case 3 -> 
                     {
                         if(contains("[a-zA-Z_]",currentChar)) tokenDescription+=currentChar;
@@ -90,18 +101,26 @@ public class LexicalAnaliser {
                             if(keywords.contains(tokenDescription.toLowerCase())) tokenType = getKeywordType(tokenDescription); 
                             else tokenType = TokenType.TYPE_IDENTIFIER;
                                 
-                            return createToken(tokenDescription,tokenType,currentChar);
+                            saveChar(currentChar);
+                            return new Token(tokenDescription,tokenType,row);
                         }    
                     }
                     
+                    // SUBTRACAO ou COMENTARIO EM LINHA
                     case 4 -> 
                     {
                         if(currentChar=='-') {tokenDescription="";state=5;}
-                        else return createToken(tokenDescription,getSymbolType(tokenDescription),currentChar);                            
+                        else 
+                        {
+                            saveChar(currentChar);
+                            return new Token(tokenDescription,getSymbolType(tokenDescription),row);
+                        }
                     }
-                   
+                    
+                    // COMENTARIO EM LINHA
                     case 5 -> {if(currentChar=='\n') state=0;}
                     
+                    // SIMBOLOS DE 2 CARACTERES
                     case 6 -> 
                     {
                         if(contains(regex,currentChar)) tokenDescription+=currentChar;
@@ -110,6 +129,7 @@ public class LexicalAnaliser {
                         return new Token(tokenDescription,getSymbolType(tokenDescription),row);
                     }
                     
+                    // ABRE-PARENTESES ou COMENTARIO EM BLOCO
                     case 7 -> 
                     {
                         if(currentChar=='*') 
@@ -118,12 +138,22 @@ public class LexicalAnaliser {
                             tokenDescription="";
                             state=8;
                         }
-                        else return createToken(tokenDescription,getSymbolType(tokenDescription),currentChar);                          
+                        else
+                        {
+                            saveChar(currentChar);
+                            return new Token(tokenDescription,getSymbolType(tokenDescription),row);
+                        }
                     }
                     
+                    // COMENTARIO EM BLOCO
                     case 8 -> {if(currentChar=='*') state=9;}
-                    case 9 -> {if(currentChar==')') state=0;}
+                    case 9 -> 
+                    {
+                        if(currentChar==')') state=0;
+                        else state=8;
+                    }
                     
+                    // STRING
                     case 10 ->
                     {
                         tokenDescription+=currentChar;
@@ -132,21 +162,23 @@ public class LexicalAnaliser {
                 }   
             }
             
-            if(state==8 || state==9) System.out.println("Row "+startCommentRow+": Unterminated Comment!");
-            if(state==10) System.out.println("Row "+startStringRow+": Unterminated String!");
+            if(state==8 || state==9) throw new LexicalException("Comentario nao terminado.",startCommentRow);
+            if(state==10) throw new LexicalException("String nao terminada.",startStringRow);
             return null;
        }
        catch(IOException e){e.getStackTrace();return null;}     
    }
    
-   private Token createToken(String description, TokenType type,char c)
+   public void closeFile()
    {
-       saveChar(c);
-       return new Token(description,type,row);
+       try{codeFile.close();}
+       catch(IOException e){e.getStackTrace();}
    }
+   
    private void saveChar(char c){lastChar = c; savedChar = true;}
    private boolean isBoolean(String str){return str.toLowerCase().equals("true") || str.toLowerCase().equals("false");}
    private String toStr(char c) {return ""+c;}
+   
    
    private boolean contains(String regex,char c)
    {
@@ -168,5 +200,6 @@ public class LexicalAnaliser {
    }
 
    private TokenType getKeywordType(String str) {return TokenType.valueOf(str.toUpperCase());}
-   private TokenType getSymbolType(String str) {return symbols.get(str);}       
+   private TokenType getSymbolType(String str) {return symbols.get(str);}     
+   private char EOF(){return Character.MAX_VALUE;}
 }
