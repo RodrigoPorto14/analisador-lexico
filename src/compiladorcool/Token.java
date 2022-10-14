@@ -1,4 +1,4 @@
-package analisador.lexico;
+package compiladorcool;
 
 public class Token {
     
@@ -14,6 +14,6 @@ public class Token {
     }
     
     public String getDescription(){return this.description;}
-    public String getType(){return this.type.toString();}
+    public TokenType getType(){return this.type;}
     public int getRow(){return this.row;}
 }

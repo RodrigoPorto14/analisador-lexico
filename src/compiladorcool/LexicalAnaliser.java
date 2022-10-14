@@ -1,4 +1,4 @@
-package analisador.lexico;
+package compiladorcool;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -17,21 +17,23 @@ public class LexicalAnaliser {
    private char lastChar;
    private boolean savedChar;
    private final ArrayList<String> keywords;
+   private final ArrayList<Error> errors;
    private final HashMap<String,TokenType> symbols;
    
-   public LexicalAnaliser(String fileName)
+   public LexicalAnaliser(String fileName, ArrayList<Error> errors)
    {
        try{codeFile = new BufferedReader(new FileReader(fileName));}
        catch(IOException e){e.getStackTrace();}
        
        row=1;
        savedChar=false;
+       this.errors=errors;
        keywords = new ArrayList<>();
        symbols = new HashMap<>();
        addKeywordsAndSymbols();
    }
    
-   public Token nextToken() throws LexicalException
+   public Token nextToken()
    {
        String tokenDescription="",regex="";
        char currentChar=' ';
@@ -62,7 +64,7 @@ public class LexicalAnaliser {
                         if(currentChar=='"') {startStringRow=row;state=10;}
                         
                         if(state!=0) tokenDescription+=currentChar;                       
-                        else if(!contains("[\n\r\f\t ]",currentChar) && currentChar!=EOF()) throw new LexicalException("Token nao reconhecido",row);                      
+                        else if(!contains("[\n\r\f\t ]",currentChar) && currentChar!=EOF()) errors.add(new LexicalError(String.format("Token '%c' nao reconhecido",currentChar),row));                      
                     }
                     
                     // INTEIRO
@@ -79,7 +81,7 @@ public class LexicalAnaliser {
                     // ID DE OBJETO ou PALAVRA-CHAVE
                     case 2 -> 
                     {
-                        if(contains("[a-zA-Z_]",currentChar)) tokenDescription+=currentChar;
+                        if(contains("[a-zA-Z0-9_]",currentChar)) tokenDescription+=currentChar;
                         else 
                         {
                             TokenType tokenType;
@@ -94,7 +96,7 @@ public class LexicalAnaliser {
                     // ID DE TIPO ou PALAVRA-CHAVE
                     case 3 -> 
                     {
-                        if(contains("[a-zA-Z_]",currentChar)) tokenDescription+=currentChar;
+                        if(contains("[a-zA-Z0-9_]",currentChar)) tokenDescription+=currentChar;
                         else 
                         {                           
                             TokenType tokenType;
@@ -162,8 +164,8 @@ public class LexicalAnaliser {
                 }   
             }
             
-            if(state==8 || state==9) throw new LexicalException("Comentario nao terminado.",startCommentRow);
-            if(state==10) throw new LexicalException("String nao terminada.",startStringRow);
+            if(state==8 || state==9) errors.add(new LexicalError("Comentario nao terminado",startCommentRow));
+            if(state==10) errors.add(new LexicalError("String nao terminada",startStringRow));
             return null;
        }
        catch(IOException e){e.getStackTrace();return null;}     
@@ -202,4 +204,5 @@ public class LexicalAnaliser {
    private TokenType getKeywordType(String str) {return TokenType.valueOf(str.toUpperCase());}
    private TokenType getSymbolType(String str) {return symbols.get(str);}     
    private char EOF(){return Character.MAX_VALUE;}
+   
 }

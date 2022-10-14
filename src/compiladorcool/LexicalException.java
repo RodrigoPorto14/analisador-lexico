@@ -1,4 +1,4 @@
-package analisador.lexico;
+package compiladorcool;
 
 public class LexicalException extends Exception{
     

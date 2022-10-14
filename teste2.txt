@@ -1,0 +1,38 @@
+
+
+(* class {};
+classw {};
+class main {};
+class Main IO {};
+class Main inherits {};
+class Main inherits IO {;
+class Main inherits IO };
+class Main inherits IO {}; *)
+
+class Main inherits IO
+{
+    teste() : Int
+    {
+        if s.length() = 4 then false else 4 fi
+    };
+
+    testee() : Int
+    {
+        while false loop "string" pool
+    };
+};
+
+class Pessoa
+{
+    idade : Int <- 21;
+    nome : String <- "Rodrigo";
+    objeto : Object <- object;
+};
+
+
+
+
+
+
+
+    
