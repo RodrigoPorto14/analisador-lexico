@@ -1,24 +1,24 @@
 
-
-(* class {};
+(*
+ class {};
 classw {};
 class main {};
 class Main IO {};
 class Main inherits {};
 class Main inherits IO {;
 class Main inherits IO };
-class Main inherits IO {}; *)
+class Main inherits IO {} *)
 
 class Main inherits IO
 {
-    teste() : Int
+    teste() : String
     {
-        if s.length() = 4 then false else 4 fi
+        if 4+4= then "yes" else "no" fi
     };
 
-    testee() : Int
+    teste2() : Void
     {
-        while false loop "string" pool
+        while i<10 loop i <- i+1 pool
     };
 };
 

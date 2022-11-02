@@ -2,6 +2,8 @@ package compiladorcool;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Queue;
+import java.util.LinkedList;
 
 public class SyntacticAnaliser {
     
@@ -10,6 +12,7 @@ public class SyntacticAnaliser {
     private final ArrayList<Error> errors;
     private final ArrayList<Token> bufferTokens;
     private final ArrayList<TokenType> firstExpr,firstExpr2;
+    private final Queue<Node> syntacticTree,nodesBuffer;
     private Token lastToken;
     
     public SyntacticAnaliser(LexicalAnaliser lexical, ArrayList<Error> errors)
@@ -19,6 +22,8 @@ public class SyntacticAnaliser {
         bufferTokens = new ArrayList<>();
         firstExpr = new ArrayList<>();
         firstExpr2 = new ArrayList<>();
+        syntacticTree = new LinkedList<>();
+        nodesBuffer = new LinkedList<>();
         addFirstExpr();
         nextToken();
     }
@@ -44,17 +49,17 @@ public class SyntacticAnaliser {
     
     private boolean nextTokenIn(ArrayList<TokenType> typeArray) {return lookAHead(1)!=null && typeArray.contains(lookAHead(1).getType());}
     
-    private void match(TokenType type) throws Exception
+    private void match(TokenType type) throws SyntacticException
     {
         if(nextTokenIs(type)) nextToken();
         else
         {
             createError(type);
-            throw new Exception();
+            throw new SyntacticException();
         }
     }
     
-     private void createError(TokenType... types)
+    private void createError(TokenType... types)
     {
         if(lastToken!=null) errors.add(new SyntacticError(lastToken.getDescription(),lastToken.getRow(),types));
         else errors.add(new SyntacticError("inicio do arquivo",1,types));
@@ -78,24 +83,37 @@ public class SyntacticAnaliser {
         firstExpr2.addAll(Arrays.asList(firstExprArray2));
     }
     
-    public void analise(){program();}
+    private void createNode(NodeType nodeType,int nodeLvl){syntacticTree.add(new Node(nodeType,nodeLvl));}
+    private void saveNode(NodeType nodeType, int nodeLvl){syntacticTree.add(new Node(nodeType,nodeLvl));}
+    private void dumpBuffer()
+    {
+        syntacticTree.addAll(nodesBuffer);
+        nodesBuffer.clear();
+    }
     
-    private void program()
+    public Queue<Node> analise()
+    {
+        program(0);
+        return syntacticTree;
+    }
+    
+    private void program(int nodeLvl)
     {
         try
         {
             do
             {
-                _class();
+                _class(nodeLvl+1);
                 match(TokenType.SEMICOLON);
             }
             while(lookAHead(1)!=null);
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void _class()
+    private void _class(int nodeLvl)
     {
+        createNode(NodeType.CLASS,nodeLvl);
         try
         {
             match(TokenType.CLASS);
@@ -108,29 +126,29 @@ public class SyntacticAnaliser {
             match(TokenType.OPEN_BRACES);
             while(nextTokenIs(TokenType.OBJECT_IDENTIFIER))
             {
-                feature();
+                feature(nodeLvl+1);
                 match(TokenType.SEMICOLON);
             }
             match(TokenType.CLOSE_BRACES);
         }
-        catch(Exception e){}    
+        catch(SyntacticException e){}    
     }
     
-    private void feature()
+    private void feature(int nodeLvl)
     {
         try 
         {
             match(TokenType.OBJECT_IDENTIFIER);
-            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) method();
-            else if(nextTokenIs(TokenType.COLON)) attribute();
+            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) method(nodeLvl);
+            else if(nextTokenIs(TokenType.COLON)) attribute(nodeLvl);
             else createError(TokenType.OPEN_PARENTHESES,TokenType.COLON);
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void method()
+    private void method(int nodeLvl)
     {
-        
+        createNode(NodeType.METHOD,nodeLvl);
         try
         {
             match(TokenType.OPEN_PARENTHESES);
@@ -147,13 +165,15 @@ public class SyntacticAnaliser {
             match(TokenType.COLON);
             match(TokenType.TYPE_IDENTIFIER);
             match(TokenType.OPEN_BRACES);
-            expr();
+            expr(nodeLvl+1);
             match(TokenType.CLOSE_BRACES);
         }
-        catch(Exception e){}  
+        catch(SyntacticException e){}  
     }
-    private void attribute()
+    
+    private void attribute(int nodeLvl)
     {
+        createNode(NodeType.ATTRIBUTE,nodeLvl);
         try
         {
             match(TokenType.COLON);
@@ -161,10 +181,10 @@ public class SyntacticAnaliser {
             if(nextTokenIs(TokenType.ASSIGN))
             {
                 match(TokenType.ASSIGN);
-                expr();
+                expr(nodeLvl+1);
             }
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
     private void formal()
@@ -175,10 +195,10 @@ public class SyntacticAnaliser {
             match(TokenType.COLON);
             match(TokenType.TYPE_IDENTIFIER);
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void expr()
+    private void expr(int nodeLvl)
     {
         try
         {
@@ -186,30 +206,32 @@ public class SyntacticAnaliser {
             {
                 switch(lookAHead(1).getType())
                 {
-                    case OBJECT_IDENTIFIER -> id();
-                    case IF -> _if();
-                    case WHILE -> _while();
-                    case OPEN_BRACES -> block();
-                    case LET -> let();
-                    case CASE -> _case();
-                    case NEW -> { match(TokenType.NEW); match(TokenType.TYPE_IDENTIFIER); }
-                    case ISVOID -> { match(TokenType.ISVOID); expr(); }
-                    case COMPLEMENT -> { match(TokenType.COMPLEMENT); expr(); }
-                    case NOT -> { match(TokenType.NOT); expr(); }
-                    case OPEN_PARENTHESES -> { match(TokenType.OPEN_PARENTHESES); expr(); match(TokenType.CLOSE_PARENTHESES); }
-                    case INTEGER -> match(TokenType.INTEGER);
-                    case STRING -> match(TokenType.STRING);
-                    case TRUE -> match(TokenType.TRUE);
-                    case FALSE -> match(TokenType.FALSE);
+                    case OBJECT_IDENTIFIER -> id(nodeLvl);
+                    case IF -> _if(nodeLvl);
+                    case WHILE -> _while(nodeLvl);
+                    case OPEN_BRACES -> block(nodeLvl);
+                    case LET -> let(nodeLvl);
+                    case CASE -> _case(nodeLvl);
+                    case NEW -> { saveNode(NodeType.NEW,nodeLvl); match(TokenType.NEW); match(TokenType.TYPE_IDENTIFIER); }
+                    case ISVOID -> { saveNode(NodeType.ISVOID,nodeLvl);match(TokenType.ISVOID); expr(nodeLvl+1); }
+                    case COMPLEMENT -> { saveNode(NodeType.COMPLEMENT,nodeLvl); match(TokenType.COMPLEMENT); expr(nodeLvl+1); }
+                    case NOT -> { saveNode(NodeType.NOT,nodeLvl); match(TokenType.NOT); expr(nodeLvl+1); }
+                    case OPEN_PARENTHESES -> { match(TokenType.OPEN_PARENTHESES); expr(nodeLvl+1); match(TokenType.CLOSE_PARENTHESES); }
+                    case INTEGER -> { saveNode(NodeType.INTEGER,nodeLvl); match(TokenType.INTEGER); }
+                    case STRING -> { saveNode(NodeType.STRING,nodeLvl); match(TokenType.STRING); }
+                    case TRUE -> { saveNode(NodeType.BOOL,nodeLvl); match(TokenType.TRUE); }
+                    case FALSE -> { saveNode(NodeType.BOOL,nodeLvl); match(TokenType.FALSE); }
+
                 }
             }
             else createError(TokenType.EXPR);
-            while(nextTokenIn(firstExpr2)) expr2();
+            while(nextTokenIn(firstExpr2)) expr2(nodeLvl);
+            //dumpBuffer();
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void expr2()
+    private void expr2(int nodeLvl)
     {
         try
         {
@@ -219,110 +241,124 @@ public class SyntacticAnaliser {
                 match(TokenType.TYPE_IDENTIFIER);
                 match(TokenType.DOT);
                 match(TokenType.OBJECT_IDENTIFIER);
-                methodCall();
+                createNode(NodeType.DISPATCH,nodeLvl);
+                //dumpBuffer();
+                methodCall(nodeLvl+1);
             }
             else if(nextTokenIs(TokenType.DOT))
             {
                 match(TokenType.DOT);
                 match(TokenType.OBJECT_IDENTIFIER);
-                methodCall();
+                createNode(NodeType.DISPATCH,nodeLvl);
+                //dumpBuffer();
+                methodCall(nodeLvl+1);
             }
             else
             {
-               match(lookAHead(1).getType());
-               expr(); 
-            }
-                 
+               TokenType tk = lookAHead(1).getType();
+               
+               if(tk==TokenType.ADD || tk==TokenType.SUB || tk==TokenType.MULT || tk==TokenType.DIV) createNode(NodeType.ARITHMETIC,nodeLvl);
+               else if(tk==TokenType.LT || tk==TokenType.LTE) createNode(NodeType.COMPARE,nodeLvl);
+               else createNode(NodeType.EQUAL,nodeLvl);
+               //dumpBuffer();
+               match(tk);
+               expr(nodeLvl+1); 
+            }           
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void id()
+    private void id(int nodeLvl)
     {
         try
         {
             match(TokenType.OBJECT_IDENTIFIER);
-            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) methodCall();
-            else if(nextTokenIs(TokenType.ASSIGN)) assignment();   
+            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) { saveNode(NodeType.DISPATCH,nodeLvl); methodCall(nodeLvl+1); }
+            else if(nextTokenIs(TokenType.ASSIGN)) { saveNode(NodeType.ASSIGNMENT,nodeLvl); assignment(nodeLvl+1); }
+            else saveNode(NodeType.ID,nodeLvl);
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void methodCall()
+    private void methodCall(int nodeLvl)
     {
         try
         {
             match(TokenType.OPEN_PARENTHESES);
             if(nextTokenIn(firstExpr))
             {
-                expr();
+                expr(nodeLvl+1);
                 while(nextTokenIs(TokenType.COMMA))
                 {
                     match(TokenType.COMMA);
-                    expr();
+                    expr(nodeLvl+1);
                 }
             }
             match(TokenType.CLOSE_PARENTHESES); 
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void assignment()
+    private void assignment(int nodeLvl)
     {
         try
         {
             match(TokenType.ASSIGN);
-            expr();
+            expr(nodeLvl+1);
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void _if()
+    private void _if(int nodeLvl)
     {
+        saveNode(NodeType.IF,nodeLvl);
         try
         {
             match(TokenType.IF);
-            expr();
+            expr(nodeLvl+1);
             match(TokenType.THEN);
-            expr();
+            expr(nodeLvl+1);
             match(TokenType.ELSE);
-            expr();
+            expr(nodeLvl+1);
             match(TokenType.FI);
         }
-        catch(Exception e){} 
+        catch(SyntacticException e){} 
     }
     
-    private void _while()
+    private void _while(int nodeLvl)
     {
+        saveNode(NodeType.WHILE,nodeLvl);
         try
         {
             match(TokenType.WHILE);
-            expr();
+            expr(nodeLvl+1);
             match(TokenType.LOOP);
-            expr();
+            expr(nodeLvl+1);
             match(TokenType.POOL);
         }
-        catch(Exception e){} 
+        catch(SyntacticException e){} 
     }
     
-    private void block()
+    private void block(int nodeLvl)
     {
+        saveNode(NodeType.SEQUENCE,nodeLvl);
         try
         {
             match(TokenType.OPEN_BRACES);
             do
             {
-                expr();
+                expr(nodeLvl+1);
                 match(TokenType.SEMICOLON);
             }
             while(nextTokenIn(firstExpr));
             match(TokenType.CLOSE_BRACES);
         }
-        catch(Exception e){} 
+        catch(SyntacticException e){} 
     }
     
-    private void let()
+    private void let(int nodeLvl)
     {
+        saveNode(NodeType.LET,nodeLvl);
         boolean secondLoop = false;
         try
         {
@@ -336,23 +372,24 @@ public class SyntacticAnaliser {
                 if(nextTokenIs(TokenType.ASSIGN))
                 {
                     match(TokenType.ASSIGN);
-                    expr();
+                    expr(nodeLvl+1);
                 }
                 secondLoop=true;
             }            
             while(nextTokenIs(TokenType.COMMA));
             match(TokenType.IN);
-            expr();
+            expr(nodeLvl+1);
         }
-        catch(Exception e){}
+        catch(SyntacticException e){}
     }
     
-    private void _case()
+    private void _case(int nodeLvl)
     {
+        saveNode(NodeType.CASE,nodeLvl);
         try
         {
             match(TokenType.CASE);
-            expr();
+            expr(nodeLvl+1);
             match(TokenType.OF);
             do
             { 
@@ -360,11 +397,11 @@ public class SyntacticAnaliser {
                 match(TokenType.COLON);
                 match(TokenType.TYPE_IDENTIFIER);
                 match(TokenType.ARROW);
-                expr();
+                expr(nodeLvl+1);
                 match(TokenType.SEMICOLON);
             }while(nextTokenIs(TokenType.OBJECT_IDENTIFIER));
             match(TokenType.ESAC);   
         }
-        catch(Exception e){} 
+        catch(SyntacticException e){} 
     }           
 }
