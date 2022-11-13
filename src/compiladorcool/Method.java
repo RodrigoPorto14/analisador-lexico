@@ -1,8 +1,8 @@
 package compiladorcool;
 
 public class Method {
-    private String type;
-    private String[] args;
+    private final String type;
+    private final String[] args;
     
     public Method(String type, String... args)
     {
@@ -11,6 +11,7 @@ public class Method {
     }
     
     public String getType(){ return type; }
+    public String[] getArgs() { return args; }
     
     public String getMethod()
     {

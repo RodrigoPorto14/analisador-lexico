@@ -1,15 +1,16 @@
 package compiladorcool;
 import java.util.ArrayList;
 import java.util.Queue;
-import java.util.LinkedList;
 
 public class Main {
     
     public static void main(String[] args)
     {
         ArrayList<Error> errors = new ArrayList<>();
-        Queue<Node> syntacticTree = new LinkedList<>();
+        Queue<Node> syntacticTree;
+        
         LexicalAnaliser lexical = new LexicalAnaliser("teste.txt",errors);
+        
         SyntacticAnaliser syntactic = new SyntacticAnaliser(lexical,errors);
         
         syntacticTree = syntactic.analise();

@@ -2,6 +2,7 @@ package compiladorcool;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Queue;
 import java.util.LinkedList;
 
@@ -12,8 +13,12 @@ public class SyntacticAnaliser {
     private final ArrayList<Error> errors;
     private final ArrayList<Token> bufferTokens;
     private final ArrayList<TokenType> firstExpr,firstExpr2;
-    private final Queue<Node> syntacticTree,nodesBuffer;
+    private final Queue<Node> syntacticTree;
+    private final ArrayList<Node> nodesBuffer;
     private Token lastToken;
+    private boolean chainStarted=false;
+    private int chainPos;
+    private final ArrayList<Integer> nodesId = new ArrayList<>();
     
     public SyntacticAnaliser(LexicalAnaliser lexical, ArrayList<Error> errors)
     {
@@ -23,7 +28,7 @@ public class SyntacticAnaliser {
         firstExpr = new ArrayList<>();
         firstExpr2 = new ArrayList<>();
         syntacticTree = new LinkedList<>();
-        nodesBuffer = new LinkedList<>();
+        nodesBuffer = new ArrayList<>();
         addFirstExpr();
         nextToken();
     }
@@ -47,7 +52,7 @@ public class SyntacticAnaliser {
     
     private boolean nextTokenIs(TokenType type) {return lookAHead(1)!=null && lookAHead(1).getType()==type;}
     
-    private boolean nextTokenIn(ArrayList<TokenType> typeArray) {return lookAHead(1)!=null && typeArray.contains(lookAHead(1).getType());}
+    private boolean nextTokenIn(ArrayList<TokenType> typeArray,int k) {return lookAHead(k)!=null && typeArray.contains(lookAHead(k).getType());}
     
     private void match(TokenType type) throws SyntacticException
     {
@@ -83,8 +88,65 @@ public class SyntacticAnaliser {
         firstExpr2.addAll(Arrays.asList(firstExprArray2));
     }
     
-    private void createNode(NodeType nodeType,int nodeLvl){syntacticTree.add(new Node(nodeType,nodeLvl));}
-    private void saveNode(NodeType nodeType, int nodeLvl){syntacticTree.add(new Node(nodeType,nodeLvl));}
+    private void addNodesId(int pos, int lvl)
+    {
+        nodesId.add(pos);
+        pos++;
+        lvl++;
+        while(nodesBuffer.size()>pos && nodesBuffer.get(pos).getLevel()>=lvl)
+        {
+            if(nodesBuffer.get(pos).getLevel()==lvl) addNodesId(pos,lvl);
+            pos++;
+        }  
+    }
+    
+    private void upNodes(int add)
+    {
+        for(var id : nodesId) nodesBuffer.get(id).setLevel(nodesBuffer.get(id).getLevel()+add);
+        nodesId.clear();
+    }
+    
+    private int nextNodePos(int pos, int lvl)
+    {
+        while(nodesBuffer.size()>pos)
+        {
+            if(nodesBuffer.get(pos).getLevel()==lvl+1) return pos;
+            pos++;
+        }
+        return 0;
+    }
+    
+    private void fixPrecedence(NodeType type,int nodeLvl,int pos)
+    {
+        HashMap<NodeType,Integer> precedence = new HashMap<>();
+        precedence.put(NodeType.EQUAL,1); precedence.put(NodeType.COMPARE,1);
+        precedence.put(NodeType.ARITHMETIC,2);
+        
+        for(int i=pos-1;i>=chainPos;i--)
+        {
+            Node node = nodesBuffer.get(i);
+            
+            if(node.getLevel()==nodeLvl-1 && precedence.containsKey(node.getType()) && precedence.get(type) < precedence.get(node.getType()))
+            {
+                addNodesId(i+1,node.getLevel()+1);
+                upNodes(1);
+                node.setLevel(node.getLevel()+1);
+                addNodesId(nextNodePos(pos+2,nodeLvl),nodeLvl+1);
+                upNodes(-1);
+                saveNodeAt(type,nodeLvl-1,i);
+                nodesBuffer.remove(++pos);
+                pos=i;
+                nodeLvl--;
+            }  
+        }  
+    }
+         
+    private void saveNode(NodeType nodeType, int nodeLvl) { nodesBuffer.add(new Node(nodeType,nodeLvl)); }   
+    private void saveNodeAt(NodeType nodeType, int nodeLvl, int pos){ nodesBuffer.add(pos, new Node(nodeType,nodeLvl)); }
+    private void upBuffer(int lvl,int pos)
+    {
+        for(int i=pos;i<nodesBuffer.size();i++) nodesBuffer.get(i).setLevel(nodesBuffer.get(i).getLevel()+lvl);
+    }
     private void dumpBuffer()
     {
         syntacticTree.addAll(nodesBuffer);
@@ -94,6 +156,7 @@ public class SyntacticAnaliser {
     public Queue<Node> analise()
     {
         program(0);
+        dumpBuffer();
         return syntacticTree;
     }
     
@@ -113,7 +176,7 @@ public class SyntacticAnaliser {
     
     private void _class(int nodeLvl)
     {
-        createNode(NodeType.CLASS,nodeLvl);
+        saveNode(NodeType.CLASS,nodeLvl);
         try
         {
             match(TokenType.CLASS);
@@ -148,7 +211,7 @@ public class SyntacticAnaliser {
     
     private void method(int nodeLvl)
     {
-        createNode(NodeType.METHOD,nodeLvl);
+        saveNode(NodeType.METHOD,nodeLvl);
         try
         {
             match(TokenType.OPEN_PARENTHESES);
@@ -173,7 +236,7 @@ public class SyntacticAnaliser {
     
     private void attribute(int nodeLvl)
     {
-        createNode(NodeType.ATTRIBUTE,nodeLvl);
+        saveNode(NodeType.ATTRIBUTE,nodeLvl);
         try
         {
             match(TokenType.COLON);
@@ -200,9 +263,13 @@ public class SyntacticAnaliser {
     
     private void expr(int nodeLvl)
     {
+        //System.out.println("EXPR"+" "+lookAHead(1).getDescription());
+        //boolean bufferIsEmpty = nodesBuffer.isEmpty();
         try
         {
-            if(nextTokenIn(firstExpr))
+            int bufferPos = nodesBuffer.size();
+            //if(!nextTokenIn(firstExpr2,1)) dumpBuffer();
+            if(nextTokenIn(firstExpr,1))
             {
                 switch(lookAHead(1).getType())
                 {
@@ -216,23 +283,24 @@ public class SyntacticAnaliser {
                     case ISVOID -> { saveNode(NodeType.ISVOID,nodeLvl);match(TokenType.ISVOID); expr(nodeLvl+1); }
                     case COMPLEMENT -> { saveNode(NodeType.COMPLEMENT,nodeLvl); match(TokenType.COMPLEMENT); expr(nodeLvl+1); }
                     case NOT -> { saveNode(NodeType.NOT,nodeLvl); match(TokenType.NOT); expr(nodeLvl+1); }
-                    case OPEN_PARENTHESES -> { match(TokenType.OPEN_PARENTHESES); expr(nodeLvl+1); match(TokenType.CLOSE_PARENTHESES); }
+                    case OPEN_PARENTHESES -> { saveNode(NodeType.AMONG_PARENTHESES,nodeLvl); match(TokenType.OPEN_PARENTHESES); expr(nodeLvl+1); match(TokenType.CLOSE_PARENTHESES); }
                     case INTEGER -> { saveNode(NodeType.INTEGER,nodeLvl); match(TokenType.INTEGER); }
                     case STRING -> { saveNode(NodeType.STRING,nodeLvl); match(TokenType.STRING); }
                     case TRUE -> { saveNode(NodeType.BOOL,nodeLvl); match(TokenType.TRUE); }
                     case FALSE -> { saveNode(NodeType.BOOL,nodeLvl); match(TokenType.FALSE); }
 
                 }
+                
             }
-            else createError(TokenType.EXPR);
-            while(nextTokenIn(firstExpr2)) expr2(nodeLvl);
-            //dumpBuffer();
+            else createError(TokenType.EXPR);       
+            while(nextTokenIn(firstExpr2,1)) expr2(nodeLvl,bufferPos);
         }
         catch(SyntacticException e){}
     }
     
-    private void expr2(int nodeLvl)
+    private void expr2(int nodeLvl,int bufferPos)
     {
+        //System.out.println("EXPR2"+" "+lookAHead(1).getDescription());
         try
         {
             if(nextTokenIs(TokenType.AT))
@@ -241,28 +309,39 @@ public class SyntacticAnaliser {
                 match(TokenType.TYPE_IDENTIFIER);
                 match(TokenType.DOT);
                 match(TokenType.OBJECT_IDENTIFIER);
-                createNode(NodeType.DISPATCH,nodeLvl);
-                //dumpBuffer();
-                methodCall(nodeLvl+1);
+                upBuffer(1,bufferPos);
+                saveNodeAt(NodeType.DISPATCH,nodeLvl,bufferPos);
+                methodCall(nodeLvl);          
+                //fixPrecedence(NodeType.DISPATCH,nodeLvl,bufferPos);
+                //if(comparePrecedence(TokenType.AT)) {System.out.println("ENTROUU"); dumpBuffer();}
             }
             else if(nextTokenIs(TokenType.DOT))
             {
                 match(TokenType.DOT);
                 match(TokenType.OBJECT_IDENTIFIER);
-                createNode(NodeType.DISPATCH,nodeLvl);
-                //dumpBuffer();
-                methodCall(nodeLvl+1);
+                upBuffer(1,bufferPos);
+                saveNodeAt(NodeType.DISPATCH,nodeLvl,bufferPos);
+                methodCall(nodeLvl);
+                //fixPrecedence(NodeType.DISPATCH,nodeLvl,bufferPos);
+                //if(comparePrecedence(TokenType.DOT)) {System.out.println("ENTROUU"); dumpBuffer();}
+                
             }
             else
             {
+               boolean enter = false;
                TokenType tk = lookAHead(1).getType();
-               
-               if(tk==TokenType.ADD || tk==TokenType.SUB || tk==TokenType.MULT || tk==TokenType.DIV) createNode(NodeType.ARITHMETIC,nodeLvl);
-               else if(tk==TokenType.LT || tk==TokenType.LTE) createNode(NodeType.COMPARE,nodeLvl);
-               else createNode(NodeType.EQUAL,nodeLvl);
-               //dumpBuffer();
+               NodeType type;
                match(tk);
-               expr(nodeLvl+1); 
+               if(tk==TokenType.ADD || tk==TokenType.SUB || tk==TokenType.MULT || tk==TokenType.DIV) type = NodeType.ARITHMETIC;
+               else if(tk==TokenType.LT || tk==TokenType.LTE) type = NodeType.COMPARE;
+               else type = NodeType.EQUAL;
+               upBuffer(1,bufferPos);
+               saveNodeAt(type,nodeLvl,bufferPos);
+               if(!chainStarted) {chainPos=bufferPos; enter=true; chainStarted=true; }
+               expr(nodeLvl+1);
+               if(enter && chainStarted) chainStarted=false;
+               fixPrecedence(type,nodeLvl,bufferPos);
+               //if(comparePrecedence(tk)) {System.out.println("ENTROUU"); dumpBuffer();}
             }           
         }
         catch(SyntacticException e){}
@@ -273,8 +352,8 @@ public class SyntacticAnaliser {
         try
         {
             match(TokenType.OBJECT_IDENTIFIER);
-            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) { saveNode(NodeType.DISPATCH,nodeLvl); methodCall(nodeLvl+1); }
-            else if(nextTokenIs(TokenType.ASSIGN)) { saveNode(NodeType.ASSIGNMENT,nodeLvl); assignment(nodeLvl+1); }
+            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) { saveNode(NodeType.METHOD_CALL,nodeLvl); methodCall(nodeLvl); }
+            else if(nextTokenIs(TokenType.ASSIGN)) { saveNode(NodeType.ASSIGNMENT,nodeLvl); assignment(nodeLvl); }
             else saveNode(NodeType.ID,nodeLvl);
         }
         catch(SyntacticException e){}
@@ -285,7 +364,7 @@ public class SyntacticAnaliser {
         try
         {
             match(TokenType.OPEN_PARENTHESES);
-            if(nextTokenIn(firstExpr))
+            if(nextTokenIn(firstExpr,1))
             {
                 expr(nodeLvl+1);
                 while(nextTokenIs(TokenType.COMMA))
@@ -350,7 +429,7 @@ public class SyntacticAnaliser {
                 expr(nodeLvl+1);
                 match(TokenType.SEMICOLON);
             }
-            while(nextTokenIn(firstExpr));
+            while(nextTokenIn(firstExpr,1));
             match(TokenType.CLOSE_BRACES);
         }
         catch(SyntacticException e){} 

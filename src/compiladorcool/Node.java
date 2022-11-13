@@ -2,7 +2,7 @@ package compiladorcool;
 
 public class Node {
     private final NodeType type;
-    private final int level;
+    private int level;
     
     public Node(NodeType type, int level)
     {
@@ -12,5 +12,6 @@ public class Node {
     
     public NodeType getType(){return type;}
     public int getLevel(){return level;}
+    public void setLevel(int level){ this.level=level; }
     
 }
