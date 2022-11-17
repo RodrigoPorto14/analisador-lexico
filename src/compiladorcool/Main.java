@@ -7,14 +7,16 @@ public class Main {
     public static void main(String[] args)
     {
         ArrayList<Error> errors = new ArrayList<>();
+        ArrayList<Token> tokens;
         Queue<Node> syntacticTree;
         
         LexicalAnaliser lexical = new LexicalAnaliser("teste.txt",errors);
-        
-        SyntacticAnaliser syntactic = new SyntacticAnaliser(lexical,errors);
-        
-        syntacticTree = syntactic.analise();
+        tokens = lexical.getTokens();
         lexical.closeFile();
+        
+        SyntacticAnaliser syntactic = new SyntacticAnaliser(tokens,errors);
+        syntacticTree = syntactic.analise();
+        
         
         /*while(!syntacticTree.isEmpty())
         {
@@ -24,11 +26,9 @@ public class Main {
             System.out.println(node.getType().toString());
         }*/
         
-        lexical = new LexicalAnaliser("teste.txt",errors);
-        SemanticAnaliser semantic = new SemanticAnaliser(lexical,syntacticTree,errors);
-        
+
+        SemanticAnaliser semantic = new SemanticAnaliser(tokens,syntacticTree,errors);
         semantic.analise();
-        lexical.closeFile();
         
         for(var error: errors) System.out.println(error.getMessage());  
     }        

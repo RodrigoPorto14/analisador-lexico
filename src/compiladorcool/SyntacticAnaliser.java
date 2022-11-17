@@ -6,12 +6,9 @@ import java.util.HashMap;
 import java.util.Queue;
 import java.util.LinkedList;
 
-public class SyntacticAnaliser {
+public class SyntacticAnaliser extends Analiser{
     
-    private final static int MAX_BUFFER_SIZE = 10;
-    private final LexicalAnaliser lexical;
     private final ArrayList<Error> errors;
-    private final ArrayList<Token> bufferTokens;
     private final ArrayList<TokenType> firstExpr,firstExpr2;
     private final Queue<Node> syntacticTree;
     private final ArrayList<Node> nodesBuffer;
@@ -20,34 +17,26 @@ public class SyntacticAnaliser {
     private int chainPos;
     private final ArrayList<Integer> nodesId = new ArrayList<>();
     
-    public SyntacticAnaliser(LexicalAnaliser lexical, ArrayList<Error> errors)
+    public SyntacticAnaliser(ArrayList<Token> tokens, ArrayList<Error> errors)
     {
+        super(tokens);
         this.errors=errors;
-        this.lexical=lexical;
-        bufferTokens = new ArrayList<>();
         firstExpr = new ArrayList<>();
         firstExpr2 = new ArrayList<>();
         syntacticTree = new LinkedList<>();
         nodesBuffer = new ArrayList<>();
         addFirstExpr();
-        nextToken();
     }
     
-    private void nextToken()
+    @Override
+    public Token nextToken()
     {
-        if(!bufferTokens.isEmpty()) lastToken = bufferTokens.remove(0);
-        while(bufferTokens.size()<MAX_BUFFER_SIZE)
+        if(tokenId<tokens.size()) 
         {
-            Token next = lexical.nextToken();
-            if(next==null) break;
-            bufferTokens.add(next);
+            lastToken = tokens.get(tokenId);
+            tokenId++;
         }
-    }
-    
-    private Token lookAHead(int k)
-    {
-        if(k-1 > bufferTokens.size()-1) return null;
-        return bufferTokens.get(k-1);
+        return lastToken;
     }
     
     private boolean nextTokenIs(TokenType type) {return lookAHead(1)!=null && lookAHead(1).getType()==type;}
@@ -171,10 +160,10 @@ public class SyntacticAnaliser {
             }
             while(lookAHead(1)!=null);
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){nodesBuffer.clear();}
     }
     
-    private void _class(int nodeLvl)
+    private void _class(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.CLASS,nodeLvl);
         try
@@ -194,10 +183,10 @@ public class SyntacticAnaliser {
             }
             match(TokenType.CLOSE_BRACES);
         }
-        catch(SyntacticException e){}    
+        catch(SyntacticException e){throw e;}    
     }
     
-    private void feature(int nodeLvl)
+    private void feature(int nodeLvl) throws SyntacticException
     {
         try 
         {
@@ -206,10 +195,10 @@ public class SyntacticAnaliser {
             else if(nextTokenIs(TokenType.COLON)) attribute(nodeLvl);
             else createError(TokenType.OPEN_PARENTHESES,TokenType.COLON);
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void method(int nodeLvl)
+    private void method(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.METHOD,nodeLvl);
         try
@@ -231,10 +220,10 @@ public class SyntacticAnaliser {
             expr(nodeLvl+1);
             match(TokenType.CLOSE_BRACES);
         }
-        catch(SyntacticException e){}  
+        catch(SyntacticException e){throw e;}  
     }
     
-    private void attribute(int nodeLvl)
+    private void attribute(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.ATTRIBUTE,nodeLvl);
         try
@@ -247,10 +236,10 @@ public class SyntacticAnaliser {
                 expr(nodeLvl+1);
             }
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void formal()
+    private void formal() throws SyntacticException
     {
         try
         {
@@ -258,10 +247,10 @@ public class SyntacticAnaliser {
             match(TokenType.COLON);
             match(TokenType.TYPE_IDENTIFIER);
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void expr(int nodeLvl)
+    private void expr(int nodeLvl) throws SyntacticException
     {
         //System.out.println("EXPR"+" "+lookAHead(1).getDescription());
         //boolean bufferIsEmpty = nodesBuffer.isEmpty();
@@ -295,10 +284,10 @@ public class SyntacticAnaliser {
             else createError(TokenType.EXPR);       
             while(nextTokenIn(firstExpr2,1)) expr2(nodeLvl,bufferPos);
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void expr2(int nodeLvl,int bufferPos)
+    private void expr2(int nodeLvl,int bufferPos) throws SyntacticException
     {
         //System.out.println("EXPR2"+" "+lookAHead(1).getDescription());
         try
@@ -344,10 +333,10 @@ public class SyntacticAnaliser {
                //if(comparePrecedence(tk)) {System.out.println("ENTROUU"); dumpBuffer();}
             }           
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void id(int nodeLvl)
+    private void id(int nodeLvl) throws SyntacticException
     {
         try
         {
@@ -356,10 +345,10 @@ public class SyntacticAnaliser {
             else if(nextTokenIs(TokenType.ASSIGN)) { saveNode(NodeType.ASSIGNMENT,nodeLvl); assignment(nodeLvl); }
             else saveNode(NodeType.ID,nodeLvl);
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void methodCall(int nodeLvl)
+    private void methodCall(int nodeLvl) throws SyntacticException
     {
         try
         {
@@ -375,20 +364,20 @@ public class SyntacticAnaliser {
             }
             match(TokenType.CLOSE_PARENTHESES); 
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void assignment(int nodeLvl)
+    private void assignment(int nodeLvl) throws SyntacticException
     {
         try
         {
             match(TokenType.ASSIGN);
             expr(nodeLvl+1);
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void _if(int nodeLvl)
+    private void _if(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.IF,nodeLvl);
         try
@@ -401,10 +390,10 @@ public class SyntacticAnaliser {
             expr(nodeLvl+1);
             match(TokenType.FI);
         }
-        catch(SyntacticException e){} 
+        catch(SyntacticException e){throw e;} 
     }
     
-    private void _while(int nodeLvl)
+    private void _while(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.WHILE,nodeLvl);
         try
@@ -415,10 +404,10 @@ public class SyntacticAnaliser {
             expr(nodeLvl+1);
             match(TokenType.POOL);
         }
-        catch(SyntacticException e){} 
+        catch(SyntacticException e){throw e;} 
     }
     
-    private void block(int nodeLvl)
+    private void block(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.SEQUENCE,nodeLvl);
         try
@@ -432,10 +421,10 @@ public class SyntacticAnaliser {
             while(nextTokenIn(firstExpr,1));
             match(TokenType.CLOSE_BRACES);
         }
-        catch(SyntacticException e){} 
+        catch(SyntacticException e){throw e;} 
     }
     
-    private void let(int nodeLvl)
+    private void let(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.LET,nodeLvl);
         boolean secondLoop = false;
@@ -459,10 +448,10 @@ public class SyntacticAnaliser {
             match(TokenType.IN);
             expr(nodeLvl+1);
         }
-        catch(SyntacticException e){}
+        catch(SyntacticException e){throw e;}
     }
     
-    private void _case(int nodeLvl)
+    private void _case(int nodeLvl) throws SyntacticException
     {
         saveNode(NodeType.CASE,nodeLvl);
         try
@@ -481,6 +470,6 @@ public class SyntacticAnaliser {
             }while(nextTokenIs(TokenType.OBJECT_IDENTIFIER));
             match(TokenType.ESAC);   
         }
-        catch(SyntacticException e){} 
+        catch(SyntacticException e){throw e;} 
     }           
 }

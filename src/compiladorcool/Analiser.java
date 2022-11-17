@@ -1,9 +1,9 @@
 package compiladorcool;
 import java.util.ArrayList;
 
-public class Analiser {
-    private ArrayList<Token> tokens;
-    private int tokenId;
+public abstract class Analiser {
+    protected ArrayList<Token> tokens;
+    protected int tokenId;
     
     public Analiser(ArrayList<Token> tokens)
     {
@@ -18,8 +18,6 @@ public class Analiser {
         return tokens.get(id);
     }
     
-    public void nextToken()
-    {
-        tokenId++;
-    }
+    public abstract Token nextToken();
+    
 }

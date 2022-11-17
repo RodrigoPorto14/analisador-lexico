@@ -5,22 +5,18 @@ import java.util.Queue;
 import java.util.Stack;
 import java.util.HashMap;
 
-public class SemanticAnaliser {
-    private final static int MAX_BUFFER_SIZE = 10;
-    private final LexicalAnaliser lexical;
+public class SemanticAnaliser extends Analiser{
     private final Queue<Node> syntacticTree;
     private final HashMap<String,ClassDescriptor> classDescriptors;
     private final Stack<HashMap<String,String>> environmentStack;
     private final ArrayList<Error> errors;
-    private final ArrayList<Token> bufferTokens;
     private String currentClass;
     
-    public SemanticAnaliser(LexicalAnaliser lexical, Queue<Node> syntacticTree, ArrayList<Error> errors)
+    public SemanticAnaliser(ArrayList<Token> tokens, Queue<Node> syntacticTree, ArrayList<Error> errors)
     {
-        this.lexical=lexical;
+        super(tokens);
         this.syntacticTree=syntacticTree;
         this.errors=errors;
-        this.bufferTokens = new ArrayList<>();
         this.classDescriptors = new HashMap<>();
         this.environmentStack = new Stack<>();
         createDefaultClasses();
@@ -130,23 +126,16 @@ public class SemanticAnaliser {
         return "Object";
     }
     
-    private Token nextToken()
+    @Override
+    public Token nextToken()
     {
         Token tk=null;
-        if(!bufferTokens.isEmpty()) tk = bufferTokens.remove(0);
-        while(bufferTokens.size()<MAX_BUFFER_SIZE)
+        if(tokenId<tokens.size()) 
         {
-            Token next = lexical.nextToken();
-            if(next==null) break;
-            bufferTokens.add(next);
+            tk = tokens.get(tokenId);
+            tokenId++;
         }
         return tk;
-    }
-    
-    private Token lookAHead(int k)
-    {
-        if(k-1 > bufferTokens.size()-1) return null;
-        return bufferTokens.get(k-1);
     }
     
     private boolean nextTokenIs(TokenType type) {return lookAHead(1)!=null && lookAHead(1).getType()==type;}
@@ -191,14 +180,7 @@ public class SemanticAnaliser {
     
     public void analise()
     {
-        nextToken();
         while(!syntacticTree.isEmpty()) nextNode();
-        for(var c : classDescriptors.keySet())
-        {
-            System.out.println(c);
-            classDescriptors.get(c).show();
-            System.out.println();
-        }
     }
     
     private void _class()

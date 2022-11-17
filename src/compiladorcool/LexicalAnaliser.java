@@ -33,7 +33,16 @@ public class LexicalAnaliser {
        addKeywordsAndSymbols();
    }
    
-   public Token nextToken()
+   
+   public ArrayList<Token> getTokens()
+   {
+       ArrayList<Token> tokens = new ArrayList<>();
+       Token tk;
+       while((tk = nextToken())!=null) tokens.add(tk);
+       return tokens;
+   }
+   
+   private Token nextToken()
    {
        String tokenDescription="",regex="";
        char currentChar=' ';

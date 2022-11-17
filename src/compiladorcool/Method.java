@@ -12,16 +12,5 @@ public class Method {
     
     public String getType(){ return type; }
     public String[] getArgs() { return args; }
-    
-    public String getMethod()
-    {
-        String str = "(";
-        for(var t : args)
-        {
-            str+=t;
-            str+=',';
-        }
-        str+=String.format(") : %s", type);
-        return str;
-    }
+
 }
