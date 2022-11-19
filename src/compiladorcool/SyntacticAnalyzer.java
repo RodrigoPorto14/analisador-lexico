@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Queue;
 import java.util.LinkedList;
 
-public class SyntacticAnaliser extends Analiser{
+public class SyntacticAnalyzer extends Analyzer{
     
     private final ArrayList<Error> errors;
     private final ArrayList<TokenType> firstExpr,firstExpr2;
@@ -17,7 +17,7 @@ public class SyntacticAnaliser extends Analiser{
     private int chainPos;
     private final ArrayList<Integer> nodesId = new ArrayList<>();
     
-    public SyntacticAnaliser(ArrayList<Token> tokens, ArrayList<Error> errors)
+    public SyntacticAnalyzer(ArrayList<Token> tokens, ArrayList<Error> errors)
     {
         super(tokens);
         this.errors=errors;
@@ -142,7 +142,7 @@ public class SyntacticAnaliser extends Analiser{
         nodesBuffer.clear();
     }
     
-    public Queue<Node> analise()
+    public Queue<Node> analyze()
     {
         program(0);
         dumpBuffer();

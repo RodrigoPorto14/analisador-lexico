@@ -10,13 +10,12 @@ public class Main {
         ArrayList<Token> tokens;
         Queue<Node> syntacticTree;
         
-        LexicalAnaliser lexical = new LexicalAnaliser("teste.txt",errors);
+        LexicalAnalyzer lexical = new LexicalAnalyzer("teste.txt",errors);
         tokens = lexical.getTokens();
         lexical.closeFile();
         
-        SyntacticAnaliser syntactic = new SyntacticAnaliser(tokens,errors);
-        syntacticTree = syntactic.analise();
-        
+        SyntacticAnalyzer syntactic = new SyntacticAnalyzer(tokens,errors);
+        syntacticTree = syntactic.analyze();
         
         /*while(!syntacticTree.isEmpty())
         {
@@ -25,10 +24,9 @@ public class Main {
             for(int i=1;i<node.getLevel();i++) System.out.print(" ");
             System.out.println(node.getType().toString());
         }*/
-        
 
-        SemanticAnaliser semantic = new SemanticAnaliser(tokens,syntacticTree,errors);
-        semantic.analise();
+        SemanticAnalyzer semantic = new SemanticAnalyzer(tokens,syntacticTree,errors);
+        semantic.analyze();
         
         for(var error: errors) System.out.println(error.getMessage());  
     }        

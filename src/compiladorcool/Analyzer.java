@@ -1,11 +1,11 @@
 package compiladorcool;
 import java.util.ArrayList;
 
-public abstract class Analiser {
+public abstract class Analyzer {
     protected ArrayList<Token> tokens;
     protected int tokenId;
     
-    public Analiser(ArrayList<Token> tokens)
+    public Analyzer(ArrayList<Token> tokens)
     {
         this.tokens=tokens;
         this.tokenId=0;

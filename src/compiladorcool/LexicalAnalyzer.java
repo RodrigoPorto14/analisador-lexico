@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-public class LexicalAnaliser {
+public class LexicalAnalyzer {
     
    private BufferedReader codeFile;
    private int row;
@@ -20,7 +20,7 @@ public class LexicalAnaliser {
    private final ArrayList<Error> errors;
    private final HashMap<String,TokenType> symbols;
    
-   public LexicalAnaliser(String fileName, ArrayList<Error> errors)
+   public LexicalAnalyzer(String fileName, ArrayList<Error> errors)
    {
        try{codeFile = new BufferedReader(new FileReader(fileName));}
        catch(IOException e){e.getStackTrace();}

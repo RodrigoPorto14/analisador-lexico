@@ -5,14 +5,14 @@ import java.util.Queue;
 import java.util.Stack;
 import java.util.HashMap;
 
-public class SemanticAnaliser extends Analiser{
+public class SemanticAnalyzer extends Analyzer{
     private final Queue<Node> syntacticTree;
     private final HashMap<String,ClassDescriptor> classDescriptors;
     private final Stack<HashMap<String,String>> environmentStack;
     private final ArrayList<Error> errors;
     private String currentClass;
     
-    public SemanticAnaliser(ArrayList<Token> tokens, Queue<Node> syntacticTree, ArrayList<Error> errors)
+    public SemanticAnalyzer(ArrayList<Token> tokens, Queue<Node> syntacticTree, ArrayList<Error> errors)
     {
         super(tokens);
         this.syntacticTree=syntacticTree;
@@ -178,7 +178,7 @@ public class SemanticAnaliser extends Analiser{
         return "";
     }
     
-    public void analise()
+    public void analyze()
     {
         while(!syntacticTree.isEmpty()) nextNode();
     }
