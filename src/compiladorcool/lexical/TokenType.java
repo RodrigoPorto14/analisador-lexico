@@ -1,4 +1,4 @@
-package compiladorcool;
+package compiladorcool.lexical;
 
 public enum TokenType {
     TYPE_IDENTIFIER, OBJECT_IDENTIFIER, INTEGER, STRING,

@@ -1,4 +1,4 @@
-package compiladorcool;
+package compiladorcool.semantic;
 
 public class Method {
     private final String type;

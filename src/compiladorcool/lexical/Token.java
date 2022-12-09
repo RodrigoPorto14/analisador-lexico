@@ -1,4 +1,4 @@
-package compiladorcool;
+package compiladorcool.lexical;
 
 public class Token {
     

@@ -1,4 +1,4 @@
-package compiladorcool;
+package compiladorcool.semantic;
 import java.util.HashMap;
 
 public class ClassDescriptor {

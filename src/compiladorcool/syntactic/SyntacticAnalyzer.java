@@ -1,5 +1,11 @@
-package compiladorcool;
+package compiladorcool.syntactic;
 
+import compiladorcool.Analyzer;
+import compiladorcool.Error;
+import compiladorcool.semantic.Node;
+import compiladorcool.semantic.NodeType;
+import compiladorcool.lexical.TokenType;
+import compiladorcool.lexical.Token;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;

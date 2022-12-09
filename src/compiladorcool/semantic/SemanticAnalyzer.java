@@ -1,5 +1,9 @@
-package compiladorcool;
+package compiladorcool.semantic;
 
+import compiladorcool.Analyzer;
+import compiladorcool.Error;
+import compiladorcool.lexical.TokenType;
+import compiladorcool.lexical.Token;
 import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Stack;

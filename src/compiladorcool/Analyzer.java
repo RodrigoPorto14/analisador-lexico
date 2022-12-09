@@ -1,4 +1,5 @@
 package compiladorcool;
+import compiladorcool.lexical.Token;
 import java.util.ArrayList;
 
 public abstract class Analyzer {

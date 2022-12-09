@@ -1,4 +1,4 @@
-package compiladorcool;
+package compiladorcool.syntactic;
 
 public class SyntacticException extends Exception{
     

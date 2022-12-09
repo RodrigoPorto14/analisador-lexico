@@ -1,4 +1,6 @@
-package compiladorcool;
+package compiladorcool.lexical;
+
+import compiladorcool.Error;
 
 public class LexicalError extends Error{
     private final String msg;

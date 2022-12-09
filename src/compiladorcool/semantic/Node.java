@@ -1,4 +1,4 @@
-package compiladorcool;
+package compiladorcool.semantic;
 
 public class Node {
     private final NodeType type;

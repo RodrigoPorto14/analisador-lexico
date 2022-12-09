@@ -1,4 +1,4 @@
-package compiladorcool;
+package compiladorcool.semantic;
 
 public enum NodeType {
     CLASS, ATTRIBUTE, METHOD, ASSIGNMENT, DISPATCH, IF, WHILE, 

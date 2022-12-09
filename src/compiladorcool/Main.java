@@ -1,11 +1,20 @@
 package compiladorcool;
+import compiladorcool.semantic.Node;
+import compiladorcool.semantic.SemanticAnalyzer;
+import compiladorcool.syntactic.SyntacticAnalyzer;
+import compiladorcool.lexical.Token;
+import compiladorcool.lexical.LexicalAnalyzer;
+import compiladorcool.codegeneration.Function;
 import java.util.ArrayList;
 import java.util.Queue;
+import com.google.gson.Gson;
 
 public class Main {
     
     public static void main(String[] args)
     {
+        
+        Function f = new Function("main");
         ArrayList<Error> errors = new ArrayList<>();
         ArrayList<Token> tokens;
         Queue<Node> syntacticTree;
@@ -29,5 +38,7 @@ public class Main {
         semantic.analyze();
         
         for(var error: errors) System.out.println(error.getMessage());  
+        
+        System.out.println(new Gson().toJson(f));
     }        
 }

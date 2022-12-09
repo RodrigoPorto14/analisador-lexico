@@ -1,4 +1,7 @@
-package compiladorcool;
+package compiladorcool.syntactic;
+
+import compiladorcool.Error;
+import compiladorcool.lexical.TokenType;
 
 public class SyntacticError extends Error{
     private final String lastToken;

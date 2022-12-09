@@ -1,4 +1,6 @@
-package compiladorcool;
+package compiladorcool.semantic;
+
+import compiladorcool.Error;
 
 public class SemanticError extends Error{
     private final String msg;
