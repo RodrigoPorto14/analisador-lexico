@@ -111,7 +111,7 @@ public class SyntacticAnalyzer extends Analyzer{
         return 0;
     }
     
-    private void fixPrecedence(NodeType type,int nodeLvl,int pos)
+    private void fixPrecedence(NodeType type,int nodeLvl,String nodeValue,int pos)
     {
         HashMap<NodeType,Integer> precedence = new HashMap<>();
         precedence.put(NodeType.EQUAL,1); precedence.put(NodeType.COMPARE,1);
@@ -128,7 +128,7 @@ public class SyntacticAnalyzer extends Analyzer{
                 node.setLevel(node.getLevel()+1);
                 addNodesId(nextNodePos(pos+2,nodeLvl),nodeLvl+1);
                 upNodes(-1);
-                saveNodeAt(type,nodeLvl-1,i);
+                saveNodeAt(type,nodeLvl-1,nodeValue,i);
                 nodesBuffer.remove(++pos);
                 pos=i;
                 nodeLvl--;
@@ -136,8 +136,10 @@ public class SyntacticAnalyzer extends Analyzer{
         }  
     }
          
-    private void saveNode(NodeType nodeType, int nodeLvl) { nodesBuffer.add(new Node(nodeType,nodeLvl)); }   
+    private void saveNode(NodeType nodeType, int nodeLvl) { nodesBuffer.add(new Node(nodeType,nodeLvl)); }
+    private void saveNode(NodeType nodeType, int nodeLvl, String nodeValue) { nodesBuffer.add(new Node(nodeType,nodeLvl,nodeValue)); }  
     private void saveNodeAt(NodeType nodeType, int nodeLvl, int pos){ nodesBuffer.add(pos, new Node(nodeType,nodeLvl)); }
+    private void saveNodeAt(NodeType nodeType, int nodeLvl, String nodeValue, int pos){ nodesBuffer.add(pos, new Node(nodeType,nodeLvl,nodeValue)); }
     private void upBuffer(int lvl,int pos)
     {
         for(int i=pos;i<nodesBuffer.size();i++) nodesBuffer.get(i).setLevel(nodesBuffer.get(i).getLevel()+lvl);
@@ -171,11 +173,11 @@ public class SyntacticAnalyzer extends Analyzer{
     
     private void _class(int nodeLvl) throws SyntacticException
     {
-        saveNode(NodeType.CLASS,nodeLvl);
         try
         {
             match(TokenType.CLASS);
             match(TokenType.TYPE_IDENTIFIER);
+            saveNode(NodeType.CLASS,nodeLvl,lastToken.getDescription());
             if(nextTokenIs(TokenType.INHERITS))
             {
                 match(TokenType.INHERITS);
@@ -197,16 +199,17 @@ public class SyntacticAnalyzer extends Analyzer{
         try 
         {
             match(TokenType.OBJECT_IDENTIFIER);
-            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) method(nodeLvl);
-            else if(nextTokenIs(TokenType.COLON)) attribute(nodeLvl);
+            String id = lastToken.getDescription();
+            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) method(nodeLvl,id);
+            else if(nextTokenIs(TokenType.COLON)) attribute(nodeLvl,id);
             else createError(TokenType.OPEN_PARENTHESES,TokenType.COLON);
         }
         catch(SyntacticException e){throw e;}
     }
     
-    private void method(int nodeLvl) throws SyntacticException
+    private void method(int nodeLvl,String id) throws SyntacticException
     {
-        saveNode(NodeType.METHOD,nodeLvl);
+        saveNode(NodeType.METHOD,nodeLvl,id);
         try
         {
             match(TokenType.OPEN_PARENTHESES);
@@ -229,9 +232,9 @@ public class SyntacticAnalyzer extends Analyzer{
         catch(SyntacticException e){throw e;}  
     }
     
-    private void attribute(int nodeLvl) throws SyntacticException
+    private void attribute(int nodeLvl,String id) throws SyntacticException
     {
-        saveNode(NodeType.ATTRIBUTE,nodeLvl);
+        saveNode(NodeType.ATTRIBUTE,nodeLvl,id);
         try
         {
             match(TokenType.COLON);
@@ -266,7 +269,8 @@ public class SyntacticAnalyzer extends Analyzer{
             //if(!nextTokenIn(firstExpr2,1)) dumpBuffer();
             if(nextTokenIn(firstExpr,1))
             {
-                switch(lookAHead(1).getType())
+                Token tk = lookAHead(1);
+                switch(tk.getType())
                 {
                     case OBJECT_IDENTIFIER -> id(nodeLvl);
                     case IF -> _if(nodeLvl);
@@ -279,10 +283,10 @@ public class SyntacticAnalyzer extends Analyzer{
                     case COMPLEMENT -> { saveNode(NodeType.COMPLEMENT,nodeLvl); match(TokenType.COMPLEMENT); expr(nodeLvl+1); }
                     case NOT -> { saveNode(NodeType.NOT,nodeLvl); match(TokenType.NOT); expr(nodeLvl+1); }
                     case OPEN_PARENTHESES -> { saveNode(NodeType.AMONG_PARENTHESES,nodeLvl); match(TokenType.OPEN_PARENTHESES); expr(nodeLvl+1); match(TokenType.CLOSE_PARENTHESES); }
-                    case INTEGER -> { saveNode(NodeType.INTEGER,nodeLvl); match(TokenType.INTEGER); }
-                    case STRING -> { saveNode(NodeType.STRING,nodeLvl); match(TokenType.STRING); }
-                    case TRUE -> { saveNode(NodeType.BOOL,nodeLvl); match(TokenType.TRUE); }
-                    case FALSE -> { saveNode(NodeType.BOOL,nodeLvl); match(TokenType.FALSE); }
+                    case INTEGER -> { saveNode(NodeType.INTEGER,nodeLvl,tk.getDescription()); match(TokenType.INTEGER); }
+                    case STRING -> { saveNode(NodeType.STRING,nodeLvl,tk.getDescription()); match(TokenType.STRING); }
+                    case TRUE -> { saveNode(NodeType.BOOL,nodeLvl,tk.getDescription()); match(TokenType.TRUE); }
+                    case FALSE -> { saveNode(NodeType.BOOL,nodeLvl,tk.getDescription()); match(TokenType.FALSE); }
 
                 }
                 
@@ -324,18 +328,19 @@ public class SyntacticAnalyzer extends Analyzer{
             else
             {
                boolean enter = false;
-               TokenType tk = lookAHead(1).getType();
+               Token tk = lookAHead(1);
+               TokenType tokenType = tk.getType();
                NodeType type;
-               match(tk);
-               if(tk==TokenType.ADD || tk==TokenType.SUB || tk==TokenType.MULT || tk==TokenType.DIV) type = NodeType.ARITHMETIC;
-               else if(tk==TokenType.LT || tk==TokenType.LTE) type = NodeType.COMPARE;
+               match(tokenType);
+               if(tokenType==TokenType.ADD || tokenType==TokenType.SUB || tokenType==TokenType.MULT || tokenType==TokenType.DIV) type = NodeType.ARITHMETIC;
+               else if(tokenType==TokenType.LT || tokenType==TokenType.LTE) type = NodeType.COMPARE;
                else type = NodeType.EQUAL;
                upBuffer(1,bufferPos);
-               saveNodeAt(type,nodeLvl,bufferPos);
+               saveNodeAt(type,nodeLvl,tk.getDescription(),bufferPos);
                if(!chainStarted) {chainPos=bufferPos; enter=true; chainStarted=true; }
                expr(nodeLvl+1);
                if(enter && chainStarted) chainStarted=false;
-               fixPrecedence(type,nodeLvl,bufferPos);
+               fixPrecedence(type,nodeLvl,tk.getDescription(),bufferPos);
                //if(comparePrecedence(tk)) {System.out.println("ENTROUU"); dumpBuffer();}
             }           
         }
@@ -346,10 +351,11 @@ public class SyntacticAnalyzer extends Analyzer{
     {
         try
         {
+            Token tk = lookAHead(1);
             match(TokenType.OBJECT_IDENTIFIER);
-            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) { saveNode(NodeType.METHOD_CALL,nodeLvl); methodCall(nodeLvl); }
-            else if(nextTokenIs(TokenType.ASSIGN)) { saveNode(NodeType.ASSIGNMENT,nodeLvl); assignment(nodeLvl); }
-            else saveNode(NodeType.ID,nodeLvl);
+            if(nextTokenIs(TokenType.OPEN_PARENTHESES)) { saveNode(NodeType.METHOD_CALL,nodeLvl,tk.getDescription()); methodCall(nodeLvl); }
+            else if(nextTokenIs(TokenType.ASSIGN)) { saveNode(NodeType.ASSIGNMENT,nodeLvl,tk.getDescription()); assignment(nodeLvl); }
+            else saveNode(NodeType.ID,nodeLvl,tk.getDescription());
         }
         catch(SyntacticException e){throw e;}
     }

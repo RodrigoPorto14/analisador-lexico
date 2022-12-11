@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Stack;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 public class SemanticAnalyzer extends Analyzer{
     private final Queue<Node> syntacticTree;
@@ -19,8 +20,9 @@ public class SemanticAnalyzer extends Analyzer{
     public SemanticAnalyzer(ArrayList<Token> tokens, Queue<Node> syntacticTree, ArrayList<Error> errors)
     {
         super(tokens);
-        this.syntacticTree=syntacticTree;
         this.errors=errors;
+        this.syntacticTree = new LinkedList<>();
+        this.syntacticTree.addAll(syntacticTree);
         this.classDescriptors = new HashMap<>();
         this.environmentStack = new Stack<>();
         createDefaultClasses();
@@ -182,9 +184,10 @@ public class SemanticAnalyzer extends Analyzer{
         return "";
     }
     
-    public void analyze()
+    public HashMap<String,ClassDescriptor> analyze()
     {
         while(!syntacticTree.isEmpty()) nextNode();
+        return classDescriptors;
     }
     
     private void _class()
