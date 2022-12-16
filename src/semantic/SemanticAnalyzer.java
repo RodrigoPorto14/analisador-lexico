@@ -12,32 +12,149 @@ import java.util.LinkedList;
 
 public class SemanticAnalyzer extends Analyzer{
     private final Queue<Node> syntacticTree;
-    private final Queue<Node> copySyntacticTree;
     private final HashMap<String,ClassDescriptor> classDescriptors;
     private final Stack<HashMap<String,String>> environmentStack;
     private final ArrayList<Error> errors;
-    private Node currentNode;
     private String currentClass;
     
     public SemanticAnalyzer(ArrayList<Token> tokens, Queue<Node> syntacticTree, ArrayList<Error> errors)
     {
         super(tokens);
         this.errors=errors;
-        this.syntacticTree = syntacticTree;
-        this.copySyntacticTree = new LinkedList<>();
+        this.syntacticTree = new LinkedList<>();
+        this.syntacticTree.addAll(syntacticTree);
         this.classDescriptors = new HashMap<>();
         this.environmentStack = new Stack<>();
         createDefaultClasses();
     }
     
+    private boolean hasClass(String className) { return className.equals("SELF_TYPE") || classDescriptors.containsKey(className); }
+    
+    private boolean hasMethod(String className, String method) 
+    { 
+        if(className.isEmpty() || !hasClass(className)) return false;
+        return classDescriptors.get(className).hasMethod(method); 
+    }
+    
+    private Method getMethod(String className, String method)
+    {
+        while(!className.isEmpty())
+        {
+            if(hasMethod(className,method)) return classDescriptors.get(className).getMethod(method);
+            className = inheritanceOf(className);
+        }
+        return null;
+    }
+    
+    private boolean hasAttribute(String attribute) 
+    { 
+        if(!environmentStack.isEmpty()) return environmentStack.peek().containsKey(attribute);
+        if(currentClass.isEmpty()) return false;
+        return classDescriptors.get(currentClass).hasAttribute(attribute); 
+    }
+    
+    private boolean hasAttribute(String className, String attribute) 
+    { 
+        if(className.isEmpty()) return false;
+        return classDescriptors.get(className).hasAttribute(attribute); 
+    }  
+    
+    private void createClass(String name, String inherits) { if(!hasClass(name)) classDescriptors.put(name, new ClassDescriptor(inherits)); }
+   
+    private void addMethod(String className,String name, String type, String... paramsType)
+    {
+        if(!hasMethod(className,name) && !className.isEmpty() && hasClass(type)) classDescriptors.get(className).addMethod(name, type, paramsType);
+    }
+    
+    private void addAttribute(String name, String type) 
+    { 
+        if(!hasAttribute(name) && hasClass(type))
+        {
+            if(!environmentStack.isEmpty()) environmentStack.peek().put(name, type);
+            else classDescriptors.get(currentClass).addAttribute(name, type);
+        }  
+    }
+    
+    private void createDefaultClasses()
+    {
+        createClass("Object","");
+        createClass("IO","Object");
+        createClass("String","Object");
+        createClass("Int","Object");
+        createClass("Bool","Object");
+        
+        addMethod("Object","abort","Object");
+        addMethod("Object","type_name","String");
+        addMethod("Object","copy","SELF_TYPE");
+        
+        addMethod("IO","out_string","SELF_TYPE","String");
+        addMethod("IO","out_int","SELF_TYPE","Int");
+        addMethod("IO","in_string","String");
+        addMethod("IO","in_int","Int");
+        
+        addMethod("String","length","Int");
+        addMethod("String","concat","String","String");
+        addMethod("String","substr","String","Int","Int");    
+    }
+    
+    private void createError(String msg,int row) { if(!currentClass.isEmpty()) errors.add(new SemanticError(msg,row)); }
+    
+    private String inheritanceOf(String className) 
+    { 
+        if(hasClass(className)) return classDescriptors.get(className).getInherits(); 
+        return "Object";
+    }
+    
+    private boolean belongs(String classA, String classB)
+    {
+        if(classB.equals("SELF_TYPE")) classB=currentClass;
+        if(classA.isEmpty()) return true;
+        do
+        {
+            if(classA.equals(classB)) return true;
+            classA = inheritanceOf(classA);
+        }while(!classA.isEmpty());
+        return false;
+    }
+    
+    private String union(String classA, String classB)
+    {
+        if(classA.isEmpty() || classB.isEmpty()) return "Object";
+        
+        while(!classA.equals("Object") && !classB.equals("Object"))
+        {
+            if(classA.equals(classB)) return classA;
+            if(inheritanceOf(classA).equals(classB)) return inheritanceOf(classA);
+            if(inheritanceOf(classB).equals(classA)) return inheritanceOf(classB);
+            classA = inheritanceOf(classA);
+            classB = inheritanceOf(classB);
+        }  
+        return "Object";
+    }
+    
+    @Override
+    public Token nextToken()
+    {
+        Token tk=null;
+        if(tokenId<tokens.size()) 
+        {
+            tk = tokens.get(tokenId);
+            tokenId++;
+        }
+        return tk;
+    }
+    
+    private boolean nextTokenIs(TokenType type) {return lookAHead(1)!=null && lookAHead(1).getType()==type;}
+    
+    private int nextNodeLvl() 
+    { 
+        if(syntacticTree.peek()!=null) return syntacticTree.peek().getLevel(); 
+        return -1;
+    }
+    
     private String nextNode()
     {
-        currentNode = syntacticTree.poll();
-        
-        Node node = currentNode;
-        copySyntacticTree.add(node);
-        
-        
+        Node node = syntacticTree.poll();
         switch(node.getType())
         {
             case CLASS -> _class();
@@ -53,7 +170,7 @@ public class SemanticAnalyzer extends Analyzer{
             case CASE -> { return _case(); }
             case NEW -> { return _new(); }
             case ISVOID -> { return isvoid(); }
-            case ARITHMETIC,ARITHMETIC2 -> { return arithmetic(); }
+            case ARITHMETIC -> { return arithmetic(); }
             case COMPLEMENT -> { return complement(); }
             case COMPARE -> { return compare(); }
             case EQUAL -> { return equal(); }
@@ -64,14 +181,12 @@ public class SemanticAnalyzer extends Analyzer{
             case BOOL -> { nextToken(); return "Bool"; }
             case ID -> { return id(nextToken()); }
         }
-        
         return "";
     }
     
     public HashMap<String,ClassDescriptor> analyze()
     {
         while(!syntacticTree.isEmpty()) nextNode();
-        syntacticTree.addAll(copySyntacticTree);
         return classDescriptors;
     }
     
@@ -142,15 +257,13 @@ public class SemanticAnalyzer extends Analyzer{
         String type = tk.getDescription();
         if(type.equals("SELF_TYPE")) type = currentClass;
         if(!hasClass(type)) { createError(String.format("tipo de %s '%s' ainda nao foi definido", msg, type),tk.getRow()); hasError=true; }
-        
+        addAttribute(name,type);
         if(nextTokenIs(TokenType.ASSIGN) || nextTokenIs(TokenType.ARROW))
         {
             nextToken();
             String out = nextNode();
             if(!hasError && !belongs(out,type)) createError(String.format("%s '%s' espera '%s' mas '%s' esta sendo atribuido", msg,name,type,out),tk.getRow());
-            type = out;
         }   
-        addAttribute(name,type);
         return type;
     }
     
@@ -379,146 +492,18 @@ public class SemanticAnalyzer extends Analyzer{
     
     private String dispatch(int nodeLvl)
     {
-        Node node = currentNode;
         String className = nextNode();
-        node.setValue(className);
-        
         if(className.equals("SELF_TYPE")) className = currentClass;
         if(nextTokenIs(TokenType.AT))
         {
             nextToken();
             Token tk = nextToken();
             String type = tk.getDescription();
-            node.setValue(type);
             if(type.equals("SELF_TYPE")) type = currentClass;
             if(!belongs(className,type)) createError(String.format("%s nao eh igual nem herda de %s", className,type),tk.getRow());
             className=type;
         }
         nextToken();
         return methodCall(nodeLvl,className);
-    }
-    
-    private boolean hasClass(String className) { return className.equals("SELF_TYPE") || classDescriptors.containsKey(className); }
-    
-    private boolean hasMethod(String className, String method) 
-    { 
-        if(className.isEmpty() || !hasClass(className)) return false;
-        return classDescriptors.get(className).hasMethod(method); 
-    }
-    
-    private Method getMethod(String className, String method)
-    {
-        while(!className.isEmpty())
-        {
-            if(hasMethod(className,method)) return classDescriptors.get(className).getMethod(method);
-            className = inheritanceOf(className);
-        }
-        return null;
-    }
-    
-    private boolean hasAttribute(String attribute) 
-    { 
-        if(!environmentStack.isEmpty()) return environmentStack.peek().containsKey(attribute);
-        if(currentClass.isEmpty()) return false;
-        return classDescriptors.get(currentClass).hasAttribute(attribute); 
-    }
-    
-    private boolean hasAttribute(String className, String attribute) 
-    { 
-        if(className.isEmpty()) return false;
-        return classDescriptors.get(className).hasAttribute(attribute); 
-    }  
-    
-    private void createClass(String name, String inherits) { if(!hasClass(name)) classDescriptors.put(name, new ClassDescriptor(inherits)); }
-   
-    private void addMethod(String className,String name, String type, String... paramsType)
-    {
-        if(!hasMethod(className,name) && !className.isEmpty() && hasClass(type)) classDescriptors.get(className).addMethod(name, type, paramsType);
-    }
-    
-    private void addAttribute(String name, String type) 
-    { 
-        if(!hasAttribute(name) && hasClass(type))
-        {
-            if(!environmentStack.isEmpty()) environmentStack.peek().put(name, type);
-            else classDescriptors.get(currentClass).addAttribute(name, type);
-        }  
-    }
-    
-    private void createDefaultClasses()
-    {
-        createClass("Object","");
-        createClass("IO","Object");
-        createClass("String","Object");
-        createClass("Int","Object");
-        createClass("Bool","Object");
-        
-        addMethod("Object","abort","Object");
-        addMethod("Object","type_name","String");
-        addMethod("Object","copy","SELF_TYPE");
-        
-        addMethod("IO","out_string","SELF_TYPE","String");
-        addMethod("IO","out_int","SELF_TYPE","Int");
-        addMethod("IO","in_string","String");
-        addMethod("IO","in_int","Int");
-        
-        addMethod("String","length","Int");
-        addMethod("String","concat","String","String");
-        addMethod("String","substr","String","Int","Int");    
-    }
-    
-    private void createError(String msg,int row) { if(!currentClass.isEmpty()) errors.add(new SemanticError(msg,row)); }
-    
-    private String inheritanceOf(String className) 
-    { 
-        if(hasClass(className)) return classDescriptors.get(className).getInherits(); 
-        return "Object";
-    }
-    
-    private boolean belongs(String classA, String classB)
-    {
-        if(classB.equals("SELF_TYPE")) classB=currentClass;
-        if(classA.isEmpty()) return true;
-        do
-        {
-            if(classA.equals(classB)) return true;
-            classA = inheritanceOf(classA);
-        }while(!classA.isEmpty());
-        return false;
-    }
-    
-    private String union(String classA, String classB)
-    {
-        if(classA.isEmpty() || classB.isEmpty()) return "Object";
-        
-        while(!classA.equals("Object") && !classB.equals("Object"))
-        {
-            if(classA.equals(classB)) return classA;
-            if(inheritanceOf(classA).equals(classB)) return inheritanceOf(classA);
-            if(inheritanceOf(classB).equals(classA)) return inheritanceOf(classB);
-            classA = inheritanceOf(classA);
-            classB = inheritanceOf(classB);
-        }  
-        return "Object";
-    }
-    
-    @Override
-    public Token nextToken()
-    {
-        Token tk=null;
-        if(tokenId<tokens.size()) 
-        {
-            tk = tokens.get(tokenId);
-            tokenId++;
-        }
-        return tk;
-    }
-    
-    private boolean nextTokenIs(TokenType type) {return lookAHead(1)!=null && lookAHead(1).getType()==type;}
-    
-    private int nextNodeLvl() 
-    { 
-        if(syntacticTree.peek()!=null) return syntacticTree.peek().getLevel(); 
-        return -1;
     }
 }

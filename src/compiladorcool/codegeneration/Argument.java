@@ -1,13 +1,12 @@
 package compiladorcool.codegeneration;
 
-public class Argument {
-    
-    private String name;
+public class Argument extends Arg{
+   
     private String type;
     
-    public Argument(String name, String type)
+    public Argument(String name,String type)
     {
-        this.name=name;
+        super(name);
         this.type=type;
     }
 }

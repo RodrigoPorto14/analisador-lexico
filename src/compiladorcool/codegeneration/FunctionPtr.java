@@ -2,13 +2,14 @@ package compiladorcool.codegeneration;
 
 import java.util.ArrayList;
 
-public class Function extends Func{
+public class FunctionPtr extends Func{
     
-    private String type;
+    private Pointer type;
     
-    public Function(String name,String type)
+    public FunctionPtr(String name, Pointer type)
     {
         super(name);
         this.type=type;
     }
 }
+

@@ -4,12 +4,12 @@ import java.util.ArrayList;
 
 public class BrilProgram {
     
-    private ArrayList<Func> functions;
+    private ArrayList<Function> functions;
     
     public BrilProgram()
     {
         functions = new ArrayList<>();
     }
     
-    public ArrayList<Func> getFunctions() { return functions; }
+    public ArrayList<Function> getFunctions() { return functions; }
 }

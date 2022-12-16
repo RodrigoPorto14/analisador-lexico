@@ -1,7 +1,6 @@
 package compiladorcool.lexical;
 
 import compiladorcool.Error;
-import java.nio.charset.Charset;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.File;
