@@ -1,0 +1,14 @@
+class Main inherits IO{
+    
+    main() : Object {
+        let i : Int
+        in
+            while i<10 
+            loop 
+            {
+                out_int(i);
+                i <- i + 1;
+            }
+            pool
+    };
+};

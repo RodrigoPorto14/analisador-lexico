@@ -1,0 +1,32 @@
+class Calculadora inherits IO
+{
+    a : Int;
+    b : Int;
+    
+    initCalculadora(v1 : Int, v2 : Int) : Calculadora
+    {
+        {
+            a <- v1;
+       	b <- v2;
+            self;
+        }
+    };
+    
+    calcula() : Object
+    {
+        out_int(a+b).
+	  out_int(a-b).
+        out_int(a*b).
+        out_int(a/b).
+        out_int(if a < b then b else a fi)
+    };
+};
+
+class Main{
+    
+    main() : Object 
+    {
+        let c : Calculadora <- (new Calculadora).initCalculadora(5,3)
+        in c.calcula()
+    };
+};
