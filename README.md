@@ -1,5 +1,5 @@
 # Compilador Cool
- Um compilador implementado em Java para compilar programas implementados na linguagem Cool.
+ Um compilador implementado em Java para compilar programas da linguagem Cool.
 
 ## Léxico
 
